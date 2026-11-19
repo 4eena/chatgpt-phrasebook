@@ -1,0 +1,28 @@
+name: Check static site
+on:
+  push:
+    paths: ['index.html', 'manifest.webmanifest', 'icon.svg', '.github/workflows/check.yml']
+  pull_request:
+    paths: ['index.html', 'manifest.webmanifest', 'icon.svg', '.github/workflows/check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate HTML scripts and key features
+        run: |
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const html=fs.readFileSync('index.html','utf8');
+          const script=html.match(/<script>([\\s\\S]*?)<\\/script>/);
+          assert(script,'script missing');new vm.Script(script[1]);
+          for(const id of ['aiGoal','aiMode','aiCopy','aiOpen','cards','composed']) assert(html.includes('id="'+id+'"'),id+' missing');
+          assert.equal((script[1].match(/"id":"\\d\\d","title"/g)||[]).length,12);
+          assert(!html.includes('3imi'));
+          JSON.parse(fs.readFileSync('manifest.webmanifest','utf8'));
+          assert(fs.readFileSync('icon.svg','utf8').includes('<svg'));
+          console.log('Static checks passed');
+          NODE
